@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../../../core/routes/app_routes.dart';
 
 class HomePageBody extends StatelessWidget {
   const HomePageBody({super.key});
@@ -20,10 +23,7 @@ class HomePageBody extends StatelessWidget {
                 splashFactory: InkSplash.splashFactory, // splash effect
               ),
               onPressed: () {
-                // Navigator.push(
-                //   context,
-                //   MaterialPageRoute(builder: (context) => ScanScreen()),
-                // );
+                context.push(AppRoutes.scan);
               },
               child: const Text('SCAN QR CODE'),
             ),
