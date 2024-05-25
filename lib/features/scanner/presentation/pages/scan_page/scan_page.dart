@@ -31,76 +31,78 @@ class _ScanPageState extends State<ScanPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('QR Scanner'),
-        actions: [
-          IconButton(
-            icon: Icon(isCameraPaused ? Icons.play_arrow : Icons.pause),
-            onPressed: () {
-              if (isCameraPaused) {
-                controller?.resumeCamera();
-              } else {
-                controller?.pauseCamera();
-              }
-              setState(() {
-                isCameraPaused = !isCameraPaused;
-              });
-            },
-          ),
-          IconButton(
-            icon: FutureBuilder(
-              future: controller?.getFlashStatus(),
-              builder: (context, snapshot) {
-                return Icon(
-                  snapshot.data == true ? Icons.flash_on : Icons.flash_off,
-                );
+    return PopScope(
+      onPopInvoked: (bool didPop) {
+        setState(() {
+          result = null;
+        });
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('QR Scanner'),
+          actions: [
+            IconButton(
+              icon: Icon(isCameraPaused ? Icons.play_arrow : Icons.pause),
+              onPressed: () {
+                if (isCameraPaused) {
+                  controller?.resumeCamera();
+                } else {
+                  controller?.pauseCamera();
+                }
+                setState(() {
+                  isCameraPaused = !isCameraPaused;
+                });
               },
             ),
-            onPressed: () async {
-              await controller?.toggleFlash();
-              setState(() {});
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.qr_code),
-            onPressed: () {
-              context.pushNamed(AppRoutes.generate);
-            },
-          ),
-        ],
-      ),
-      body: Stack(
-        children: [
-          _buildQrView(context),
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (result != null)
-                    Text(
-                      'Barcode Type: ${result!.format.name}\nData: ${result!.code}',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(color: Colors.white),
-                    )
-                  else
-                    const Text('QR code',
-                        style: TextStyle(color: Colors.white)),
-                  const SizedBox(height: 10),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _buildControlButton(),
-                    ],
-                  ),
-                ],
+            IconButton(
+              icon: FutureBuilder(
+                future: controller?.getFlashStatus(),
+                builder: (context, snapshot) {
+                  return Icon(
+                    snapshot.data == true ? Icons.flash_on : Icons.flash_off,
+                  );
+                },
+              ),
+              onPressed: () async {
+                await controller?.toggleFlash();
+                setState(() {});
+              },
+            ),
+            IconButton(
+              icon: const Icon(Icons.qr_code),
+              onPressed: () {
+                context.pushNamed(AppRoutes.generate);
+              },
+            ),
+          ],
+        ),
+        body: Stack(
+          children: [
+            _buildQrView(context),
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      'QR code',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _buildControlButton(),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -129,10 +131,19 @@ class _ScanPageState extends State<ScanPage> {
     setState(() {
       this.controller = controller;
     });
-    controller.scannedDataStream.listen((scanData) {
-      setState(() {
-        result = scanData;
-      });
+    controller.scannedDataStream.listen((scanData) async {
+      result = scanData;
+
+      if (result != null) {
+        controller.pauseCamera();
+        // Navigate to the scan result page
+        context.pushNamed(AppRoutes.scanResult, extra: result).then((_) {
+          setState(() {
+            result = null;
+            controller.resumeCamera();
+          });
+        });
+      }
     });
   }
 
@@ -151,8 +162,7 @@ class _ScanPageState extends State<ScanPage> {
       child: ElevatedButton.icon(
         icon: const Icon(Icons.photo_library),
         onPressed: () {
-          // await controller?.flipCamera();
-          // setState(() {},);
+          // Handle scan image button press
         },
         label: const Text('Scan Image'),
       ),
