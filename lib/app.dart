@@ -21,6 +21,7 @@ class AppView extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'QR Quick Scanner',
       routerConfig: AppRouter.router,
+      theme: ThemeData(primarySwatch: Colors.blue),
     );
   }
 }

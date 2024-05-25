@@ -16,10 +16,12 @@ class HomeView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      // appBar: HomeAppBar(),
-      // bottomNavigationBar: MainNavBar(),
-      body: HomePageBody(),
+    return Scaffold(
+      appBar: AppBar(
+        centerTitle: true,
+        title: const Text('QR Code Scanner & Generator'),
+      ),
+      body: const HomePageBody(),
     );
   }
 }
