@@ -2,7 +2,10 @@ import 'dart:developer';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:qr_code_scanner/qr_code_scanner.dart';
+
+import '../../../../../core/routes/app_routes.dart';
 
 class ScanPage extends StatefulWidget {
   const ScanPage({super.key});
@@ -62,7 +65,7 @@ class _ScanPageState extends State<ScanPage> {
           IconButton(
             icon: const Icon(Icons.qr_code),
             onPressed: () {
-              // context.pushNamed(AppRoutes.generate);
+              context.pushNamed(AppRoutes.generate);
             },
           ),
         ],
