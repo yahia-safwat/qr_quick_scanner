@@ -23,7 +23,7 @@ class HomePageBody extends StatelessWidget {
                 splashFactory: InkSplash.splashFactory, // splash effect
               ),
               onPressed: () {
-                context.push(AppRoutes.scan);
+                context.goNamed(AppRoutes.scan);
               },
               child: const Text('SCAN QR CODE'),
             ),
