@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../../features/generator/presentation/pages/generate_page/generate_page.dart';
 import '../../features/home/presentation/pages/home_page.dart';
@@ -25,7 +26,7 @@ class AppRouter {
         path: AppRoutes.scanResult,
         name: AppRoutes.scanResult,
         builder: (context, state) {
-          final result = state.extra! as String;
+          final result = state.extra! as Barcode?;
 
           return ScanResultPage(result: result);
         },

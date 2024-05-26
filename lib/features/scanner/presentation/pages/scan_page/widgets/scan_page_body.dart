@@ -3,6 +3,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 
 import 'image_from_gallery_button.dart';
 import 'scanner_error_widget.dart';
+import 'scanner_overlay.dart';
 
 class ScanPageBody extends StatelessWidget {
   final MobileScannerController controller;
@@ -12,57 +13,59 @@ class ScanPageBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scanWindow = Rect.fromCenter(
+      center: MediaQuery.sizeOf(context).center(Offset.zero) -
+          const Offset(
+              0, 150), // Move scan window above the center by 50 pixels
+      width: 200,
+      height: 200,
+    );
     return Stack(
       children: [
         MobileScanner(
           controller: controller,
+          scanWindow: scanWindow,
           errorBuilder: (context, error, child) {
             return ScannerErrorWidget(error: error);
           },
-          fit: BoxFit.contain,
         ),
-        Center(
-          child: Container(
-            width: 250,
-            height: 250,
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.white, width: 2.0),
-              borderRadius: BorderRadius.circular(8.0),
-            ),
-          ),
+        ValueListenableBuilder(
+          valueListenable: controller,
+          builder: (context, value, child) {
+            if (!value.isInitialized ||
+                !value.isRunning ||
+                value.error != null) {
+              return const SizedBox();
+            }
+
+            return CustomPaint(
+              painter: ScannerOverlay(scanWindow: scanWindow),
+            );
+          },
         ),
         Align(
           alignment: Alignment.bottomCenter,
-          child: Container(
-            alignment: Alignment.bottomCenter,
-            height: 100,
-            color: Colors.black.withOpacity(0.4),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Expanded(child: Center(child: _buildBarcode(barcode))),
-                AnalyzeImageFromGalleryButton(controller: controller),
+                const Text(
+                  'QR code',
+                  style: TextStyle(color: Colors.white),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    AnalyzeImageFromGalleryButton(controller: controller),
+                  ],
+                ),
               ],
             ),
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildBarcode(Barcode? value) {
-    if (value == null) {
-      return const Text(
-        'Scan something!',
-        overflow: TextOverflow.fade,
-        style: TextStyle(color: Colors.white),
-      );
-    }
-
-    return Text(
-      value.displayValue ?? 'No display value.',
-      overflow: TextOverflow.fade,
-      style: const TextStyle(color: Colors.white),
     );
   }
 }

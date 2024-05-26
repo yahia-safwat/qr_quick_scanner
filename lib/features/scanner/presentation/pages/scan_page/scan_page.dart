@@ -19,7 +19,7 @@ class ScanPage extends StatefulWidget {
 class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
   final MobileScannerController controller = MobileScannerController(
     autoStart: false,
-    torchEnabled: true,
+    torchEnabled: false,
     useNewCameraSelector: true,
   );
 
@@ -28,9 +28,18 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
 
   void _handleBarcode(BarcodeCapture barcodes) {
     if (mounted) {
-      setState(() {
-        _barcode = barcodes.barcodes.firstOrNull;
-      });
+      final barcode = barcodes.barcodes.firstOrNull;
+      if (barcode != null) {
+        // Stop the scanner and navigate to the result screen
+        controller.stop();
+        context.pushNamed(AppRoutes.scanResult, extra: barcode).then((_) {
+          // Resume the scanner when returning to this page
+          setState(() {
+            _barcode = null;
+          });
+          controller.start();
+        });
+      } else {}
     }
   }
 
@@ -38,10 +47,18 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _startListening();
+  }
 
+  void _startListening() {
     _subscription = controller.barcodes.listen(_handleBarcode);
-
     unawaited(controller.start());
+  }
+
+  void _stopListening() {
+    unawaited(_subscription?.cancel());
+    _subscription = null;
+    unawaited(controller.stop());
   }
 
   @override
@@ -54,35 +71,41 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
       case AppLifecycleState.detached:
       case AppLifecycleState.hidden:
       case AppLifecycleState.paused:
-        return;
+        _stopListening();
+        break;
       case AppLifecycleState.resumed:
-        _subscription = controller.barcodes.listen(_handleBarcode);
-
-        unawaited(controller.start());
+        _startListening();
+        break;
       case AppLifecycleState.inactive:
-        unawaited(_subscription?.cancel());
-        _subscription = null;
-        unawaited(controller.stop());
+        _stopListening();
+        break;
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('QR Scanner'), actions: [
-        StartStopMobileScannerButton(controller: controller),
-        ToggleFlashlightButton(controller: controller),
-        IconButton(
-          icon: const Icon(Icons.qr_code),
-          onPressed: () {
-            context.pushNamed(AppRoutes.generate);
-          },
+    return PopScope(
+      onPopInvoked: (bool didPop) {
+        setState(() {
+          _barcode = null;
+        });
+      },
+      child: Scaffold(
+        appBar: AppBar(title: const Text('QR Scanner'), actions: [
+          StartStopMobileScannerButton(controller: controller),
+          ToggleFlashlightButton(controller: controller),
+          IconButton(
+            icon: const Icon(Icons.qr_code),
+            onPressed: () {
+              context.pushNamed(AppRoutes.generate);
+            },
+          ),
+        ]),
+        backgroundColor: Colors.black,
+        body: ScanPageBody(
+          controller: controller,
+          barcode: _barcode,
         ),
-      ]),
-      backgroundColor: Colors.black,
-      body: ScanPageBody(
-        controller: controller,
-        barcode: _barcode,
       ),
     );
   }
@@ -90,8 +113,7 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
   @override
   Future<void> dispose() async {
     WidgetsBinding.instance.removeObserver(this);
-    unawaited(_subscription?.cancel());
-    _subscription = null;
+    _stopListening();
     super.dispose();
     await controller.dispose();
   }
