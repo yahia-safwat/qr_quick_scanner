@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:qr_code_scanner/qr_code_scanner.dart';
 
 import 'widgets/scan_result_body.dart';
 
 class ScanResultPage extends StatelessWidget {
-  final Barcode? result;
+  final String? result;
   const ScanResultPage({super.key, this.result});
 
   @override

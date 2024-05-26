@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:qr_code_scanner/qr_code_scanner.dart';
 
 class ScanResultBody extends StatelessWidget {
-  final Barcode? scannedResult;
+  final String? scannedResult;
 
   const ScanResultBody({super.key, required this.scannedResult});
 
@@ -15,19 +14,21 @@ class ScanResultBody extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            'Barcode Type: ${scannedResult?.format.name}',
-            style: const TextStyle(fontSize: 20.0, fontWeight: FontWeight.bold),
+          const Text(
+            'Barcode Type: ',
+            // 'Barcode Type: ${scannedResult?.format.name}',
+            style: TextStyle(fontSize: 20.0, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16.0),
-          Text(
-            scannedResult?.code ?? 'No result',
-            style: const TextStyle(fontSize: 16.0),
+          const Text(
+            'Scanned result',
+            // Text(scannedResult?.code ?? 'No result',
+            style: TextStyle(fontSize: 16.0),
           ),
           const SizedBox(height: 70.0),
           ElevatedButton(
             onPressed: () {
-              _copyToClipboard(context, scannedResult!.code ?? '');
+              _copyToClipboard(context, 'scan result');
             },
             child: const Text('Copy Result'),
           ),

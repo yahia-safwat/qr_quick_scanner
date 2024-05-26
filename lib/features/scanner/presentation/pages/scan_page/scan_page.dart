@@ -1,177 +1,98 @@
-import 'dart:developer';
-import 'dart:io';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:qr_code_scanner/qr_code_scanner.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../../../../../core/routes/app_routes.dart';
+import 'widgets/scan_page_body.dart';
+import 'widgets/start_stop_mobile_scanner_button.dart';
+import 'widgets/toggle_flashlight_button.dart';
 
 class ScanPage extends StatefulWidget {
   const ScanPage({super.key});
 
   @override
-  State<StatefulWidget> createState() => _ScanPageState();
+  State<ScanPage> createState() => _ScanPageState();
 }
 
-class _ScanPageState extends State<ScanPage> {
-  Barcode? result;
-  QRViewController? controller;
-  final GlobalKey qrKey = GlobalKey(debugLabel: 'QR');
-  bool isCameraPaused = false;
+class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
+  final MobileScannerController controller = MobileScannerController(
+    autoStart: false,
+    torchEnabled: true,
+    useNewCameraSelector: true,
+  );
+
+  Barcode? _barcode;
+  StreamSubscription<Object?>? _subscription;
+
+  void _handleBarcode(BarcodeCapture barcodes) {
+    if (mounted) {
+      setState(() {
+        _barcode = barcodes.barcodes.firstOrNull;
+      });
+    }
+  }
 
   @override
-  void reassemble() {
-    super.reassemble();
-    if (Platform.isAndroid) {
-      controller?.pauseCamera();
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+
+    _subscription = controller.barcodes.listen(_handleBarcode);
+
+    unawaited(controller.start());
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (!controller.value.isInitialized) {
+      return;
     }
-    controller?.resumeCamera();
+
+    switch (state) {
+      case AppLifecycleState.detached:
+      case AppLifecycleState.hidden:
+      case AppLifecycleState.paused:
+        return;
+      case AppLifecycleState.resumed:
+        _subscription = controller.barcodes.listen(_handleBarcode);
+
+        unawaited(controller.start());
+      case AppLifecycleState.inactive:
+        unawaited(_subscription?.cancel());
+        _subscription = null;
+        unawaited(controller.stop());
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return PopScope(
-      onPopInvoked: (bool didPop) {
-        setState(() {
-          result = null;
-        });
-      },
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('QR Scanner'),
-          actions: [
-            IconButton(
-              icon: Icon(isCameraPaused ? Icons.play_arrow : Icons.pause),
-              onPressed: () {
-                if (isCameraPaused) {
-                  controller?.resumeCamera();
-                } else {
-                  controller?.pauseCamera();
-                }
-                setState(() {
-                  isCameraPaused = !isCameraPaused;
-                });
-              },
-            ),
-            IconButton(
-              icon: FutureBuilder(
-                future: controller?.getFlashStatus(),
-                builder: (context, snapshot) {
-                  return Icon(
-                    snapshot.data == true ? Icons.flash_on : Icons.flash_off,
-                  );
-                },
-              ),
-              onPressed: () async {
-                await controller?.toggleFlash();
-                setState(() {});
-              },
-            ),
-            IconButton(
-              icon: const Icon(Icons.qr_code),
-              onPressed: () {
-                context.pushNamed(AppRoutes.generate);
-              },
-            ),
-          ],
+    return Scaffold(
+      appBar: AppBar(title: const Text('QR Scanner'), actions: [
+        StartStopMobileScannerButton(controller: controller),
+        ToggleFlashlightButton(controller: controller),
+        IconButton(
+          icon: const Icon(Icons.qr_code),
+          onPressed: () {
+            context.pushNamed(AppRoutes.generate);
+          },
         ),
-        body: Stack(
-          children: [
-            _buildQrView(context),
-            Align(
-              alignment: Alignment.bottomCenter,
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text(
-                      'QR code',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        _buildControlButton(),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildQrView(BuildContext context) {
-    var scanArea = MediaQuery.of(context).size.width < 400 ||
-            MediaQuery.of(context).size.height < 400
-        ? 150.0
-        : 300.0;
-
-    return QRView(
-      key: qrKey,
-      onQRViewCreated: _onQRViewCreated,
-      overlay: QrScannerOverlayShape(
-        borderColor: Colors.white,
-        borderRadius: 10,
-        borderLength: 30,
-        borderWidth: 10,
-        cutOutSize: scanArea,
-      ),
-      onPermissionSet: (ctrl, p) => _onPermissionSet(context, ctrl, p),
-    );
-  }
-
-  void _onQRViewCreated(QRViewController controller) {
-    setState(() {
-      this.controller = controller;
-    });
-    controller.scannedDataStream.listen((scanData) async {
-      result = scanData;
-
-      if (result != null) {
-        controller.pauseCamera();
-        // Navigate to the scan result page
-        context.pushNamed(AppRoutes.scanResult, extra: result).then((_) {
-          setState(() {
-            result = null;
-            controller.resumeCamera();
-          });
-        });
-      }
-    });
-  }
-
-  void _onPermissionSet(BuildContext context, QRViewController ctrl, bool p) {
-    log('${DateTime.now().toIso8601String()}_onPermissionSet $p');
-    if (!p) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No permission')),
-      );
-    }
-  }
-
-  Widget _buildControlButton() {
-    return Container(
-      margin: const EdgeInsets.all(8),
-      child: ElevatedButton.icon(
-        icon: const Icon(Icons.photo_library),
-        onPressed: () {
-          // Handle scan image button press
-        },
-        label: const Text('Scan Image'),
+      ]),
+      backgroundColor: Colors.black,
+      body: ScanPageBody(
+        controller: controller,
+        barcode: _barcode,
       ),
     );
   }
 
   @override
-  void dispose() {
-    controller?.dispose();
+  Future<void> dispose() async {
+    WidgetsBinding.instance.removeObserver(this);
+    unawaited(_subscription?.cancel());
+    _subscription = null;
     super.dispose();
+    await controller.dispose();
   }
 }
